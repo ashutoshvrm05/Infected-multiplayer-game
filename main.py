@@ -1,5 +1,6 @@
 import pygame
 import sys
+from vfs import VirtualFileSystem  
 
 import pygame
 
@@ -16,7 +17,9 @@ class Terminal:
         self.char_width = self.font.size("A")[0] 
         self.char_height = self.font.size("A")[1]
         
-        self.prompt = "> "
+        self.vfs = VirtualFileSystem()
+        self.prompt = ""
+        self.update_prompt() 
         self.input_text = ""
         self.lines = []
         
@@ -26,50 +29,76 @@ class Terminal:
         
         self.cursor_index = 0
 
+    
+    def update_prompt(self):
+        """Updates the visual prompt to match the current directory."""
+        self.prompt = f"admin@{self.vfs.get_path()}> "
+
+    def execute_command(self, command_string):
+        """Parses the string and talks to the Virtual File System."""
+        if not command_string:
+            return
+
+        parts = command_string.split()
+        cmd = parts[0]
+        args = parts[1:] if len(parts) > 1 else []
+
+        if cmd == "clear":
+            self.lines.clear()
+            
+        elif cmd == "ls":
+            items = self.vfs.ls()
+            if items:
+                self.lines.append("  ".join(items))
+                
+        elif cmd == "cd":
+            if not args:
+                return 
+            
+            target = args[0]
+            error = self.vfs.cd(target)
+            
+            if error:
+                self.lines.append(error)
+            else:
+                self.update_prompt()
+                
+        else:
+            self.lines.append(f"Command not found: {cmd}")
+
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
 
             if event.key == pygame.K_RETURN:
                 self.input_text = self.input_text.strip()
                 
-                print(f"Command entered: {self.input_text}")
-                
-                
                 if self.input_text:
                     self.lines.append(self.prompt + self.input_text)
+                    
+                    self.execute_command(self.input_text)
                 else:
                     self.lines.append(self.prompt)
                     
-                if self.input_text == "clear":
-                    self.lines.clear()
-                    
                 self.input_text = "" 
-                self.cursor_index = 0  # Reset cursor to start on new line
+                self.cursor_index = 0
                 
-            # --- NEW: Arrow Key Logic ---
             elif event.key == pygame.K_LEFT:
-                # Move left, but don't go below 0
                 self.cursor_index = max(0, self.cursor_index - 1)
                 self.cursor_visible = True
                 self.cursor_timer = pygame.time.get_ticks()
 
             elif event.key == pygame.K_RIGHT:
-                # Move right, but don't go past the length of the string
                 self.cursor_index = min(len(self.input_text), self.cursor_index + 1)
                 self.cursor_visible = True
                 self.cursor_timer = pygame.time.get_ticks()
-            # -----------------------------
                 
             elif event.key == pygame.K_BACKSPACE:
-                # Only delete if the cursor is past index 0
                 if self.cursor_index > 0:
-                    # Slice the string to remove the char just behind the cursor
                     self.input_text = self.input_text[:self.cursor_index - 1] + self.input_text[self.cursor_index:]
                     self.cursor_index -= 1
                 
             else:
                 if event.unicode.isprintable():
-                    # Insert the new letter exactly at the cursor index
                     self.input_text = self.input_text[:self.cursor_index] + event.unicode + self.input_text[self.cursor_index:]
                     self.cursor_index += 1
 
@@ -89,32 +118,24 @@ class Terminal:
         max_lines = (terminal_height // line_height) - 1 
         visible_lines = self.lines[-max_lines:] if len(self.lines) > max_lines else self.lines
 
-        # Draw the past history
         for line in visible_lines:
-            # We already attached self.prompt when appending to self.lines
             text_surface = self.font.render(line, True, self.text_color)
             surface.blit(text_surface, (self.x, y))
             y += line_height
         
-        # Draw the active input
         full_text = self.prompt + self.input_text[:self.cursor_index] + " " + self.input_text[self.cursor_index+1:]
         text_surface = self.font.render(full_text, True, self.text_color)
 
         surface.blit(text_surface, (self.x, y))
         
-        # --- NEW: Grid-Based Cursor Drawing ---
-         # The X position is: Base X + ((Length of prompt + Cursor Index) * Width of one character)
         total_chars_behind_cursor = len(self.prompt) + self.cursor_index
         cursor_x = self.x + (total_chars_behind_cursor * self.char_width)
         cursor_y = self.y + len(visible_lines)*self.char_height
 
         if self.cursor_visible:
            
-            # Use char_width for the width of the rectangle so it perfectly covers one letter space
             cursor_rect = pygame.Rect(cursor_x, cursor_y, self.char_width, self.char_height)
             
-            # Optional: If you want an underline cursor instead of a block, change char_height to 2 
-            # and change cursor_y to (y + self.char_height - 2)
             pygame.draw.rect(surface, self.text_color, cursor_rect)
 
             if(len(self.input_text)>self.cursor_index):
