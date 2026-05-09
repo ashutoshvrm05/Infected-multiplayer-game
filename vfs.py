@@ -1,0 +1,96 @@
+# vfs.py
+
+class Node:
+    """Base class for both files and directories."""
+    def __init__(self, name, parent=None):
+        self.name = name
+        self.parent = parent
+
+class File(Node):
+    def __init__(self, name, content="", parent=None):
+        super().__init__(name, parent)
+        self.content = content
+        self.is_infected = False  # For your game logic later!
+
+class Directory(Node):
+    def __init__(self, name, parent=None):
+        super().__init__(name, parent)
+        self.children = {}  # Dictionary mapping names to Node objects
+
+    def add_child(self, node):
+        self.children[node.name] = node
+        node.parent = self
+
+class VirtualFileSystem:
+    def __init__(self):
+        # 1. Initialize the root directory
+        self.root = Directory("/")
+        self.current_dir = self.root
+        
+        # 2. Build out a starting file structure
+        self._build_default_system()
+
+    def _build_default_system(self):
+        """Creates fake folders so the game isn't empty when you start."""
+        sys_dir = Directory("sys")
+        users_dir = Directory("users")
+        home_dir = Directory("ashutosh")
+        
+        # Link them together
+        self.root.add_child(sys_dir)
+        self.root.add_child(users_dir)
+        users_dir.add_child(home_dir)
+        
+        # Add a dummy file
+        sys_dir.add_child(File("kernel.dll", "CRITICAL SYSTEM FILE"))
+
+        # Set the starting location
+        self.current_dir = home_dir
+
+    def get_path(self):
+        """Builds the string representation of the current path (e.g., /users/ashutosh)"""
+        if self.current_dir.name == "/":
+            return "/"
+            
+        parts = []
+        curr = self.current_dir
+        while curr.name != "/":
+            parts.append(curr.name)
+            curr = curr.parent
+            
+        # Reverse the parts and join them with slashes
+        return "/" + "/".join(reversed(parts))
+
+    def ls(self):
+        """Returns a list of items in the current directory."""
+        if not self.current_dir.children:
+            return []
+        
+        items = []
+        for name, node in self.current_dir.children.items():
+            if isinstance(node, Directory):
+                items.append(name + "/") # Add a slash to show it's a folder
+            else:
+                items.append(name)
+        return items
+
+    def cd(self, target_name):
+        """Changes the current directory. Returns an error message if it fails."""
+        if target_name == "..":
+            if self.current_dir.parent is not None:
+                self.current_dir = self.current_dir.parent
+            return None # None means success
+            
+        if target_name == "/":
+            self.current_dir = self.root
+            return None
+
+        if target_name in self.current_dir.children:
+            node = self.current_dir.children[target_name]
+            if isinstance(node, Directory):
+                self.current_dir = node
+                return None
+            else:
+                return f"cd: not a directory: {target_name}"
+        else:
+            return f"cd: no such file or directory: {target_name}"
