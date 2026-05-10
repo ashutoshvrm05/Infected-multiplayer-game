@@ -28,14 +28,11 @@ class Terminal:
         self.blink_interval = 500 
         
         self.cursor_index = 0
-
     
     def update_prompt(self):
-        """Updates the visual prompt to match the current directory."""
         self.prompt = f"admin@{self.vfs.get_path()}> "
 
     def execute_command(self, command_string):
-        """Parses the string and talks to the Virtual File System."""
         if not command_string:
             return
 
@@ -49,7 +46,20 @@ class Terminal:
         elif cmd == "ls":
             items = self.vfs.ls()
             if items:
-                self.lines.append("  ".join(items))
+                msg = ""
+                c = 1
+                for item in items:
+                    if c%2==0:
+                        msg += item
+                        c += 1
+                        self.lines.append(msg)
+                        msg = ""
+                    else:
+                        msg += item
+                        msg += (15-len(item))*" "
+                        c += 1
+                if c%2 == 0:
+                    self.lines.append(msg)
                 
         elif cmd == "cd":
             if not args:
@@ -107,8 +117,6 @@ class Terminal:
         if curr_time - self.cursor_timer >= self.blink_interval:
             self.cursor_visible = not self.cursor_visible
             self.cursor_timer = curr_time
-
-
 
     def draw(self, surface, terminal_height):
         

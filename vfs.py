@@ -33,10 +33,19 @@ class VirtualFileSystem:
         sys_dir = Directory("sys")
         users_dir = Directory("users")
         home_dir = Directory("ashutosh")
+        downloads_dir = Directory("downloads")
+        pictures_dir = Directory("pictures")
+        documents_dir = Directory("documents")
+        videos_dir = Directory("videos")
+
         
         self.root.add_child(sys_dir)
         self.root.add_child(users_dir)
         users_dir.add_child(home_dir)
+        home_dir.add_child(downloads_dir)
+        home_dir.add_child(pictures_dir)
+        home_dir.add_child(documents_dir)
+        home_dir.add_child(videos_dir)
         
         sys_dir.add_child(File("kernel.dll", "CRITICAL SYSTEM FILE"))
 
