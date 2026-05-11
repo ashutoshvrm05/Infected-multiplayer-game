@@ -22,6 +22,9 @@ class Terminal:
         self.update_prompt() 
         self.input_text = ""
         self.lines = []
+
+        self.history = []
+        self.history_index = 0
         
         self.cursor_visible = True
         self.cursor_timer = pygame.time.get_ticks()
@@ -42,6 +45,7 @@ class Terminal:
 
         if cmd == "clear":
             self.lines.clear()
+            print(self.cmds)
             
         elif cmd == "ls":
             items = self.vfs.ls()
@@ -83,8 +87,10 @@ class Terminal:
                 self.input_text = self.input_text.strip()
                 
                 if self.input_text:
+                    self.history.append(self.input_text)
+                    self.history_index = len(self.history)
+
                     self.lines.append(self.prompt + self.input_text)
-                    
                     self.execute_command(self.input_text)
                 else:
                     self.lines.append(self.prompt)
@@ -106,6 +112,29 @@ class Terminal:
                 if self.cursor_index > 0:
                     self.input_text = self.input_text[:self.cursor_index - 1] + self.input_text[self.cursor_index:]
                     self.cursor_index -= 1
+
+            elif event.key == pygame.K_UP:
+                if self.history and self.history_index > 0:
+                    self.history_index -= 1
+                    self.input_text = self.history[self.history_index]
+                    self.cursor_index = len(self.input_text) 
+                    
+                    self.cursor_visible = True
+                    self.cursor_timer = pygame.time.get_ticks()
+
+            elif event.key == pygame.K_DOWN:
+                if self.history:
+                    if self.history_index < len(self.history) - 1:
+                        self.history_index += 1
+                        self.input_text = self.history[self.history_index]
+                        self.cursor_index = len(self.input_text)
+                    elif self.history_index == len(self.history) - 1:
+                        self.history_index += 1
+                        self.input_text = ""
+                        self.cursor_index = 0
+
+                    self.cursor_visible = True
+                    self.cursor_timer = pygame.time.get_ticks()
                 
             else:
                 if event.unicode.isprintable():
