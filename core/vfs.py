@@ -1,17 +1,19 @@
-# vfs.py
 
+# both files and folders are nodes 
 class Node:
     """Base class for both files and directories."""
     def __init__(self, name, parent=None):
         self.name = name
         self.parent = parent
 
+# files class
 class File(Node):
     def __init__(self, name, content="", parent=None):
         super().__init__(name, parent)
         self.content = content
         self.is_infected = False  
 
+# folder class
 class Directory(Node):
     def __init__(self, name, parent=None):
         super().__init__(name, parent)
@@ -29,7 +31,8 @@ class VirtualFileSystem:
         self._build_default_system()
 
     def _build_default_system(self):
-        """Creates fake folders so the game isn't empty when you start."""
+        
+        # making virtual file system
         sys_dir = Directory("sys")
         users_dir = Directory("users")
         home_dir = Directory("ashutosh")

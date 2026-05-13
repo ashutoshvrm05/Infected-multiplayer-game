@@ -1,40 +1,45 @@
 import pygame
 import sys
-from vfs import VirtualFileSystem  
+from core.vfs import VirtualFileSystem  
 
 import pygame
 
 class Terminal:
     def __init__(self, x, y, width):
+        # coordinates of the terminal screen
         self.x = x
         self.y = y
         self.width = width
         
+        # font and text
         self.font = pygame.font.SysFont('couriernew, consolas, monospace', 20, bold=True)
-        self.text_color = (0, 255, 65)  
+        self.text_color = (0, 255, 65)
         
-        
+        # size of a letter in px
         self.char_width = self.font.size("A")[0] 
         self.char_height = self.font.size("A")[1]
         
+        # prompt is default text, input text is what the user inputs, lines is everything that is to be displayed
         self.vfs = VirtualFileSystem()
         self.prompt = ""
         self.update_prompt() 
         self.input_text = ""
         self.lines = []
 
+        # history is the record of all input text
         self.history = []
         self.history_index = 0
         
+        # cursor, cursor index is the number of letters before it
         self.cursor_visible = True
         self.cursor_timer = pygame.time.get_ticks()
         self.blink_interval = 500 
-        
         self.cursor_index = 0
     
     def update_prompt(self):
         self.prompt = f"admin@{self.vfs.get_path()}> "
 
+    # runs when the user hits enter after some input text
     def execute_command(self, command_string):
         if not command_string:
             return
@@ -45,7 +50,6 @@ class Terminal:
 
         if cmd == "clear":
             self.lines.clear()
-            print(self.cmds)
             
         elif cmd == "ls":
             items = self.vfs.ls()
@@ -80,6 +84,7 @@ class Terminal:
         else:
             self.lines.append(f"Command not found: {cmd}")
 
+    # handle all key press
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
 
@@ -141,12 +146,14 @@ class Terminal:
                     self.input_text = self.input_text[:self.cursor_index] + event.unicode + self.input_text[self.cursor_index:]
                     self.cursor_index += 1
 
+    # updating blink of cursor
     def update(self):
         curr_time = pygame.time.get_ticks()
         if curr_time - self.cursor_timer >= self.blink_interval:
             self.cursor_visible = not self.cursor_visible
             self.cursor_timer = curr_time
 
+    # draw everything 
     def draw(self, surface, terminal_height):
         
         y = self.y
@@ -162,7 +169,6 @@ class Terminal:
         
         full_text = self.prompt + self.input_text[:self.cursor_index] + " " + self.input_text[self.cursor_index+1:]
         text_surface = self.font.render(full_text, True, self.text_color)
-
         surface.blit(text_surface, (self.x, y))
         
         total_chars_behind_cursor = len(self.prompt) + self.cursor_index
@@ -197,13 +203,14 @@ def main():
     clock = pygame.time.Clock()
     
 
-    bg_color = (13, 2, 8)     
-    border_color = (0, 255, 65) 
+    bg_color = (10, 5, 15)
+    border_color = (0, 255, 65)
     
 
     border_padding = 20
 
     terminal = Terminal(x=border_padding + 10, y=border_padding + 10, width=WIDTH - (border_padding*2))
+
     
     running = True
     while running:
