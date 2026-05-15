@@ -195,7 +195,7 @@ class NodeMap:
         self.font = pygame.font.SysFont('couriernew, consolas, monospace', 12, bold=True)
         self.line_color = (0, 100, 25) 
         self.node_color = (0, 255, 65) 
-        self.bg_color = (13, 2, 8)
+        self.bg_color = (10, 5, 15)
         
         # Camera & Panning State 
         self.camera_x = 0
@@ -333,6 +333,18 @@ def main():
     
     # The TUI (x=400, width=580)
     tui = VirusTUI(400, 20, 580, 560, vfs, node_map)
+
+    scanline_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    # The '50' at the end is the Alpha (transparency) from 0 to 255. 
+    # Lower = subtler lines. Higher = darker lines.
+    scanline_color = (0, 0, 0, 80) 
+
+    for y in range(0, HEIGHT, 2): # Draw a line every 3 pixels
+        pygame.draw.line(scanline_overlay, scanline_color, (0, y), (WIDTH, y), 1)
+    # ==========================================
+
+    # A temporary surface to draw our clean game onto before applying effects
+    game_surface = pygame.Surface((WIDTH, HEIGHT))
     
     running = True
     while running:
@@ -342,10 +354,28 @@ def main():
             node_map.handle_event(event)
             
         screen.fill((13, 2, 8))
+        game_surface.fill((10, 5, 15))
         
         # Draw both tui and map
-        node_map.draw(screen)
-        tui.draw(screen)
+        node_map.draw(game_surface)
+        tui.draw(game_surface)
+        # 2. CREATE THE GLOW EFFECT (BLOOM)
+        # Shrink the game surface to blur it
+        shrunk = pygame.transform.smoothscale(game_surface, (WIDTH // 4, HEIGHT // 1))
+        # Scale it back up
+        glow = pygame.transform.smoothscale(shrunk, (WIDTH, HEIGHT))
+
+
+        # 3. COMPOSITE EVERYTHING TO THE ACTUAL SCREEN
+        # Step A: Draw the sharp, raw game
+        screen.blit(game_surface, (0, 0))
+        
+        # Step B: Additive blend the blurred glow on top! 
+        # (Comment this line out to see the difference)
+        screen.blit(glow, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+        
+        # Step C: Slap the scanlines over the very top
+        screen.blit(scanline_overlay, (0, 0))
         
         pygame.display.flip()
         clock.tick(60)

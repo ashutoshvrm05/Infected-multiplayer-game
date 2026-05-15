@@ -60,7 +60,7 @@ class VirtualFileSystem:
             
         parts = []
         curr = self.current_dir
-        while curr.name != "/":
+        while curr.name != "/root":
             parts.append(curr.name)
             curr = curr.parent
             
