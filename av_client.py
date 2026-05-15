@@ -1,6 +1,6 @@
 import pygame
 import sys
-from core.vfs import VirtualFileSystem  
+from core.vfs import VirtualFileSystem
 
 import pygame
 

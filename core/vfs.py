@@ -25,9 +25,8 @@ class Directory(Node):
 
 class VirtualFileSystem:
     def __init__(self):
-        self.root = Directory("/")
+        self.root = Directory("/root")
         self.current_dir = self.root
-        
         self._build_default_system()
 
     def _build_default_system(self):
