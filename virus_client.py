@@ -334,14 +334,11 @@ def main():
     # The TUI (x=400, width=580)
     tui = VirusTUI(400, 20, 580, 560, vfs, node_map)
 
+    # CRT Effect Scanlines 
     scanline_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-    # The '50' at the end is the Alpha (transparency) from 0 to 255. 
-    # Lower = subtler lines. Higher = darker lines.
     scanline_color = (0, 0, 0, 80) 
-
-    for y in range(0, HEIGHT, 2): # Draw a line every 3 pixels
+    for y in range(0, HEIGHT, 2): 
         pygame.draw.line(scanline_overlay, scanline_color, (0, y), (WIDTH, y), 1)
-    # ==========================================
 
     # A temporary surface to draw our clean game onto before applying effects
     game_surface = pygame.Surface((WIDTH, HEIGHT))
@@ -359,19 +356,15 @@ def main():
         # Draw both tui and map
         node_map.draw(game_surface)
         tui.draw(game_surface)
-        # 2. CREATE THE GLOW EFFECT (BLOOM)
-        # Shrink the game surface to blur it
-        shrunk = pygame.transform.smoothscale(game_surface, (WIDTH // 4, HEIGHT // 1))
-        # Scale it back up
+
+        # CREATE THE GLOW EFFECT (BLOOM)
+        shrunk = pygame.transform.smoothscale(game_surface, (WIDTH // 2, HEIGHT // 1))
         glow = pygame.transform.smoothscale(shrunk, (WIDTH, HEIGHT))
 
-
-        # 3. COMPOSITE EVERYTHING TO THE ACTUAL SCREEN
-        # Step A: Draw the sharp, raw game
+        # COMPOSITE EVERYTHING TO THE ACTUAL SCREEN
         screen.blit(game_surface, (0, 0))
         
-        # Step B: Additive blend the blurred glow on top! 
-        # (Comment this line out to see the difference)
+        # Additive blend the blurred glow on top! 
         screen.blit(glow, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
         
         # Step C: Slap the scanlines over the very top

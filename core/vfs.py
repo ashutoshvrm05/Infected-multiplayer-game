@@ -39,6 +39,9 @@ class VirtualFileSystem:
         pictures_dir = Directory("pictures")
         documents_dir = Directory("documents")
         videos_dir = Directory("videos")
+        pic1 = File("pic1.jpeg")
+        pic2 = File("pic2.jpeg")
+        pic3 = File("pic3.jpeg")
 
         
         self.root.add_child(sys_dir)
@@ -48,6 +51,9 @@ class VirtualFileSystem:
         home_dir.add_child(pictures_dir)
         home_dir.add_child(documents_dir)
         home_dir.add_child(videos_dir)
+        videos_dir.add_child(pic1)
+        videos_dir.add_child(pic2)
+        videos_dir.add_child(pic3)
         
         sys_dir.add_child(File("kernel.dll", "CRITICAL SYSTEM FILE"))
 
