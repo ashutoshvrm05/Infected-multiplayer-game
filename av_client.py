@@ -4,7 +4,7 @@ import random
 from core.vfs import VirtualFileSystem
 
 class SystemMonitor:
-    def __init__(self, x, y, width, height):
+    def __init__(self, x, y, width, height, theme):
         # coordinates of the System Minitor screen
         self.x = x
         self.y = y
@@ -12,8 +12,9 @@ class SystemMonitor:
         self.height = height
         
         # font and text
-        self.color = (0, 255, 65)
-        self.bg_color = (10, 5, 15)
+        self.theme = theme
+        self.color = theme["f_color"]
+        self.bg_color = theme["bg_color"]
         self.font = pygame.font.SysFont('couriernew, consolas, monospace', 14, bold=True)
         self.title_font = pygame.font.SysFont('couriernew, consolas, monospace', 16, bold=True)
         
@@ -33,6 +34,9 @@ class SystemMonitor:
             "WARNING: FIREWALL OFFLINE"
         ]
 
+        # System Health
+        self.sys_health = 100.0  
+
     def add_log(self, message):
         self.logs.append(message)
         if len(self.logs) > 12:
@@ -48,44 +52,68 @@ class SystemMonitor:
         self.cpu_history.pop(0)
 
     def draw(self, surface):
+        start_y = self.y + 10
+        available_height = self.height - 10
+
         # Layout metrics
-        graph_h = int(self.height * 0.30)
-        ram_h = int(self.height * 0.15)
+        health_h = int(available_height * 0.12)
+        graph_h = int(available_height * 0.25)
+        ram_h = int(available_height * 0.12)
         padding = 15
         
-        # CPU SPARKLINE GRAPH 
-        cpu_y = self.y
-        pygame.draw.rect(surface, self.color, (self.x, cpu_y, self.width, graph_h), 5)
+        # SYSTEM HEALTH 
+        health_y = start_y
+        pygame.draw.rect(surface, self.color, (self.x, health_y, self.width, health_h), 2)
         
-        title = self.title_font.render(f"CPU LOAD: {int(self.cpu_current)}%", True, self.color)
-        surface.blit(title, (self.x + 5, cpu_y + 5))
+        health_color = (255, 50, 50) if self.sys_health < 30 else self.color
         
-        # solid area Sparkline
+        h_title = self.title_font.render(f" SYS Health: {int(self.sys_health)}% ", True, health_color, self.bg_color)
+
+        surface.blit(h_title, (self.x + 15, health_y - (h_title.get_height() // 2)))
+        
+        block_w = 20
+        block_spacing = 5
+        num_blocks = int(self.width - 20) // (block_w + block_spacing)
+        active_blocks = int((self.sys_health / 100.0) * num_blocks)
+        
+        for i in range(num_blocks):
+            bx = self.x + 10 + (i * (block_w + block_spacing))
+            by = health_y + 18 
+            if i < active_blocks:
+                pygame.draw.rect(surface, health_color, (bx, by, block_w, health_h - 28))
+            else:
+                pygame.draw.rect(surface, (50, 35, 0), (bx, by, block_w, health_h - 28))
+
+        # CPU
+        cpu_y = health_y + health_h + padding
+        pygame.draw.rect(surface, self.color, (self.x, cpu_y, self.width, graph_h), 2)
+        
+        c_title = self.title_font.render(f" CPU Load: {int(self.cpu_current)}% ", True, self.color, self.bg_color)
+        surface.blit(c_title, (self.x + 15, cpu_y - (c_title.get_height() // 2)))
+        
         bar_width = (self.width - 4) / len(self.cpu_history)
         for i, val in enumerate(self.cpu_history):
-            bar_h = (val / 100.0) * (graph_h - 30) 
+            bar_h = (val / 100.0) * (graph_h - 20) 
             bx = self.x + 2 + (i * bar_width)
             by = cpu_y + graph_h - bar_h - 2 
             pygame.draw.rect(surface, self.color, (bx, by, bar_width + 1, bar_h))
 
-        # RAM PROGRESS BAR 
+        # RAM 
         ram_y = cpu_y + graph_h + padding
         pygame.draw.rect(surface, self.color, (self.x, ram_y, self.width, ram_h), 2)
         
-        ram_title = self.title_font.render(f"RAM ALLOC: {int(self.ram_usage)}%", True, self.color)
-        surface.blit(ram_title, (self.x + 5, ram_y + 5))
+        r_title = self.title_font.render(f" RAM Alloc: {int(self.ram_usage)}% ", True, self.color, self.bg_color)
+        surface.blit(r_title, (self.x + 15, ram_y - (r_title.get_height() // 2)))
         
-        # Chunky background bar
         bar_x = self.x + 10
-        bar_y = ram_y + 35
+        bar_y = ram_y + 20 
         max_bar_w = self.width - 20
-        pygame.draw.rect(surface, (50, 35, 0), (bar_x, bar_y, max_bar_w, 20)) 
+        pygame.draw.rect(surface, (50, 35, 0), (bar_x, bar_y, max_bar_w, ram_h - 30)) 
         
-        # Solid filled foreground bar
         inner_w = (self.ram_usage / 100.0) * max_bar_w
-        pygame.draw.rect(surface, self.color, (bar_x, bar_y, inner_w, 20))
+        pygame.draw.rect(surface, self.color, (bar_x, bar_y, inner_w, ram_h - 30))
 
-        # SYSLOG SECTION 
+        # SYSLOG 
         syslog_y = ram_y + ram_h + padding
         syslog_h = self.height - (syslog_y - self.y)
         pygame.draw.rect(surface, self.color, (self.x, syslog_y, self.width, syslog_h), 2)
@@ -100,16 +128,19 @@ class SystemMonitor:
             text_y += self.font.get_height() + 4
 
 class Terminal:
-    def __init__(self, x, y, width, monitor=None):
+    def __init__(self, x, y, width, height, theme, monitor=None):
         # coordinates of the terminal screen
         self.x = x
         self.y = y
         self.width = width
+        self.height = height
         self.monitor = monitor 
         
         # font and text
         self.font = pygame.font.SysFont('couriernew, consolas, monospace', 20, bold=True)
-        self.text_color = (0, 255, 65) 
+        self.theme = theme
+        self.text_color = theme["f_color"]
+        self.bg_color = theme["bg_color"]
         
         # size of a letter in px
         self.char_width = self.font.size("A")[0] 
@@ -242,24 +273,33 @@ class Terminal:
 
     # draw everything 
     def draw(self, surface, terminal_height):
-        y = self.y
+        t_y = self.y + 15
+        t_x = self.x + 10
         line_height = self.char_height
+
+        # Draw Right Panel (Terminal + Border)
+        pygame.draw.rect(surface, self.text_color, 
+                         pygame.Rect(self.x, self.y, self.width, self.height-(2*20)-10), 
+                         width=2) 
+        
+        t_title = self.font.render(" Terminal ", True, self.text_color, self.bg_color)
+        surface.blit(t_title, (self.x + 20, self.y - 10))
         
         max_lines = (terminal_height // line_height) - 1 
         visible_lines = self.lines[-max_lines:] if len(self.lines) > max_lines else self.lines
 
         for line in visible_lines:
             text_surface = self.font.render(line, True, self.text_color)
-            surface.blit(text_surface, (self.x, y))
-            y += line_height
+            surface.blit(text_surface, (t_x, t_y))
+            t_y += line_height
         
         full_text = self.prompt + self.input_text[:self.cursor_index] + " " + self.input_text[self.cursor_index+1:]
         text_surface = self.font.render(full_text, True, self.text_color)
-        surface.blit(text_surface, (self.x, y))
+        surface.blit(text_surface, (t_x, t_y))
         
         total_chars_behind_cursor = len(self.prompt) + self.cursor_index
-        cursor_x = self.x + (total_chars_behind_cursor * self.char_width)
-        cursor_y = self.y + len(visible_lines)*self.char_height
+        cursor_x = t_x + (total_chars_behind_cursor * self.char_width)
+        cursor_y = self.y + 15 + len(visible_lines)*self.char_height
 
         if self.cursor_visible:
             cursor_rect = pygame.Rect(cursor_x, cursor_y, self.char_width, self.char_height)
@@ -267,12 +307,12 @@ class Terminal:
             if(len(self.input_text)>self.cursor_index):
                 char_under_cursor = self.input_text[self.cursor_index]
                 s = self.font.render(char_under_cursor, True, (0,0,0))
-                surface.blit(s, (cursor_x, y))
+                surface.blit(s, (cursor_x, t_y))
         else:
             if(len(self.input_text)>self.cursor_index):
                 char_under_cursor = self.input_text[self.cursor_index]
                 s = self.font.render(char_under_cursor, True, self.text_color)
-                surface.blit(s, (cursor_x, y))
+                surface.blit(s, (cursor_x, t_y))
 
 
 def main():
@@ -281,25 +321,31 @@ def main():
     # Widen the screen to 1000px to fit both UI elements comfortably
     WIDTH, HEIGHT = 1200, 600
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Antivirus Command Center")
+    pygame.display.set_caption("INFECTED")
     clock = pygame.time.Clock()
     
+    # Color Pallet
+    themes = {"retro_green":             {"bg_color": (10, 5, 15), "f_color": (0, 255, 65)},
+              "phosphorous_amber":       {"bg_color": (10, 5, 15), "f_color": (255, 176, 0)},
+              "crimson":                 {"bg_color": (10, 5, 15), "f_color": (238,72,58)}
+              }
+    
     bg_color = (10, 5, 15)
-    border_color = (0, 255, 65)
     border_padding = 20
 
-    #  Monitor on the Left (Width: 320)
-    monitor = SystemMonitor(x=border_padding, y=border_padding, width=320, height=HEIGHT - (border_padding*2))
+    #  Monitor on the Left 
+    monitor_width = 320
+    monitor = SystemMonitor(x=border_padding, y=border_padding, width=320, height=HEIGHT - (border_padding*2), theme=themes["phosphorous_amber"])
     
     # Terminal on the Right
-    term_x = border_padding + 320 + border_padding
+    term_x = border_padding + monitor_width + border_padding
     term_width = WIDTH - term_x - border_padding
-    terminal = Terminal(x=term_x + 10, y=border_padding + 10, width=term_width - 20, monitor=monitor)
+    terminal = Terminal(x=term_x, y=border_padding + 10, width=term_width - 20, height=HEIGHT, monitor=monitor, theme=themes["phosphorous_amber"])   
 
     # CRT Effect Scanlines 
     scanline_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     scanline_color = (0, 0, 0, 80) 
-    for y in range(0, HEIGHT, 2): 
+    for y in range(0, HEIGHT, 3): 
         pygame.draw.line(scanline_overlay, scanline_color, (0, y), (WIDTH, y), 1)
 
     # A temporary surface to draw our clean game onto before applying effects
@@ -325,19 +371,39 @@ def main():
         # Draw Left Panel
         monitor.draw(game_surface)
 
-        # Draw Right Panel (Terminal + Border)
-        pygame.draw.rect(game_surface, border_color, 
-                         pygame.Rect(term_x, border_padding, term_width, HEIGHT - (2*border_padding)), 
-                         width=2) 
+        # Draw Terminal
         terminal.draw(game_surface, HEIGHT - 4*border_padding)
 
         # GLOW EFFECT (BLOOM)
-        shrunk = pygame.transform.smoothscale(game_surface, (WIDTH // 2, HEIGHT // 2))
-        glow = pygame.transform.smoothscale(shrunk, (WIDTH, HEIGHT))
-
-        # COMPOSITING
+        screen.fill((0, 0, 0))
         screen.blit(game_surface, (0, 0))
-        screen.blit(glow, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+
+        # 2. Create the "Tight" Glow (Slightly blurred)
+        blur_1 = pygame.transform.smoothscale(game_surface, (WIDTH // 6, HEIGHT // 6))
+        glow_1 = pygame.transform.smoothscale(blur_1, (WIDTH, HEIGHT))
+
+        # 3. Create the "Wide" Glow (Heavily blurred for ambient light)
+        blur_2 = pygame.transform.smoothscale(game_surface, (WIDTH // 8, HEIGHT // 8))
+        glow_2 = pygame.transform.smoothscale(blur_2, (WIDTH, HEIGHT))
+
+        # THE FIX: Create a black surface to physically dim the glow layers
+        # since BLEND_RGB_ADD ignores standard alpha transparency!
+        dimmer = pygame.Surface((WIDTH, HEIGHT))
+        dimmer.fill((0, 0, 0))
+
+        # Dim the tight glow by 40% (0 is invisible, 255 is pitch black)
+        dimmer.set_alpha(150)
+        glow_1.blit(dimmer, (0, 0))
+
+        # Dim the wide glow by 75% so it's just a faint aura
+        dimmer.set_alpha(190)
+        glow_2.blit(dimmer, (0, 0))
+
+        # 4. Additive Blending (Light math: adds the RGB values together)
+        screen.blit(glow_1, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+        screen.blit(glow_2, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+
+        # 5. Draw the scanlines over the absolute top
         screen.blit(scanline_overlay, (0, 0))
 
         pygame.display.flip()
