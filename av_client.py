@@ -348,7 +348,7 @@ def main():
     for y in range(0, HEIGHT, 3): 
         pygame.draw.line(scanline_overlay, scanline_color, (0, y), (WIDTH, y), 1)
 
-    # A temporary surface to draw our clean game onto before applying effects
+    # temporary surface to draw our clean game onto before applying effects
     game_surface = pygame.Surface((WIDTH, HEIGHT))
     
     running = True
@@ -378,32 +378,28 @@ def main():
         screen.fill((0, 0, 0))
         screen.blit(game_surface, (0, 0))
 
-        # 2. Create the "Tight" Glow (Slightly blurred)
+        # Glow (Slightly blurred)
         blur_1 = pygame.transform.smoothscale(game_surface, (WIDTH // 6, HEIGHT // 6))
         glow_1 = pygame.transform.smoothscale(blur_1, (WIDTH, HEIGHT))
 
-        # 3. Create the "Wide" Glow (Heavily blurred for ambient light)
+        # Glow (Heavily blurred for ambient light)
         blur_2 = pygame.transform.smoothscale(game_surface, (WIDTH // 8, HEIGHT // 8))
         glow_2 = pygame.transform.smoothscale(blur_2, (WIDTH, HEIGHT))
 
-        # THE FIX: Create a black surface to physically dim the glow layers
-        # since BLEND_RGB_ADD ignores standard alpha transparency!
         dimmer = pygame.Surface((WIDTH, HEIGHT))
         dimmer.fill((0, 0, 0))
 
-        # Dim the tight glow by 40% (0 is invisible, 255 is pitch black)
         dimmer.set_alpha(150)
         glow_1.blit(dimmer, (0, 0))
 
-        # Dim the wide glow by 75% so it's just a faint aura
         dimmer.set_alpha(190)
         glow_2.blit(dimmer, (0, 0))
 
-        # 4. Additive Blending (Light math: adds the RGB values together)
+        # Additive Blending
         screen.blit(glow_1, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
         screen.blit(glow_2, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
 
-        # 5. Draw the scanlines over the absolute top
+        # scanlines
         screen.blit(scanline_overlay, (0, 0))
 
         pygame.display.flip()
