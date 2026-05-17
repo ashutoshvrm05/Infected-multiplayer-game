@@ -4,6 +4,7 @@ import random
 from core.vfs import VirtualFileSystem
 
 class SystemMonitor:
+
     def __init__(self, x, y, width, height, theme):
         # coordinates of the System Minitor screen
         self.x = x
@@ -44,10 +45,10 @@ class SystemMonitor:
 
     def update(self, curr_tick):
         # Fake CPU for testing
-        if random.random() < 0.05:
+        if random.random() < 0.01:
             self.cpu_target = random.uniform(5, 85)
             
-        self.cpu_current += (self.cpu_target - self.cpu_current) * 0.1
+        self.cpu_current += (self.cpu_target - self.cpu_current) * 0.05
         self.cpu_history.append(self.cpu_current)
         self.cpu_history.pop(0)
 
@@ -128,6 +129,7 @@ class SystemMonitor:
             text_y += self.font.get_height() + 4
 
 class Terminal:
+
     def __init__(self, x, y, width, height, theme, monitor=None):
         # coordinates of the terminal screen
         self.x = x
@@ -191,7 +193,7 @@ class Terminal:
                         msg = ""
                     else:
                         msg += item
-                        msg += (15-len(item))*" "
+                        msg += (20-len(item))*" "
                         c += 1
                 if c%2 == 0:
                     self.lines.append(msg)
@@ -199,8 +201,12 @@ class Terminal:
         elif cmd == "cd":
             if not args:
                 return 
-            target = args[0]
+            
+            target = " ".join(args)
+            target = target.replace('"', '').replace("'", "")
+            target = target.rstrip("/")
             error = self.vfs.cd(target)
+            
             if error:
                 self.lines.append(error)
             else:
@@ -383,7 +389,7 @@ def main():
         glow_1 = pygame.transform.smoothscale(blur_1, (WIDTH, HEIGHT))
 
         # Glow (Heavily blurred for ambient light)
-        blur_2 = pygame.transform.smoothscale(game_surface, (WIDTH // 8, HEIGHT // 8))
+        blur_2 = pygame.transform.smoothscale(game_surface, (WIDTH // 10, HEIGHT // 10))
         glow_2 = pygame.transform.smoothscale(blur_2, (WIDTH, HEIGHT))
 
         dimmer = pygame.Surface((WIDTH, HEIGHT))
@@ -392,7 +398,7 @@ def main():
         dimmer.set_alpha(150)
         glow_1.blit(dimmer, (0, 0))
 
-        dimmer.set_alpha(190)
+        dimmer.set_alpha(130)
         glow_2.blit(dimmer, (0, 0))
 
         # Additive Blending

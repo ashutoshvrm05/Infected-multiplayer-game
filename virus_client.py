@@ -318,10 +318,10 @@ class NodeMap:
 def main():
     pygame.init()
 
-    WIDTH = 1000
+    WIDTH = 1200
     HEIGHT = 600
     # Widen the screen to fit both UI elements
-    screen = pygame.display.set_mode((1000, 600))
+    screen = pygame.display.set_mode((1200, 600))
     pygame.display.set_caption("Swarm Interface")
     clock = pygame.time.Clock()
     
@@ -329,10 +329,10 @@ def main():
     vfs = VirtualFileSystem()
     
     # Tactical Map (x=20, width=360)
-    node_map = NodeMap(20, 20, 360, 560, vfs)
+    node_map = NodeMap(20, 20, 560, 560, vfs)
     
     # The TUI (x=400, width=580)
-    tui = VirusTUI(400, 20, 580, 560, vfs, node_map)
+    tui = VirusTUI(600, 20, 580, 560, vfs, node_map)
 
     # CRT Effect Scanlines 
     scanline_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
