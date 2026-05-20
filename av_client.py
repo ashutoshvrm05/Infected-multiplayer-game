@@ -19,44 +19,61 @@ class SystemMonitor:
         self.font = pygame.font.SysFont('couriernew, consolas, monospace', 14, bold=True)
         self.title_font = pygame.font.SysFont('couriernew, consolas, monospace', 16, bold=True)
         
-        # CPU
-        self.cpu_history = [0.0] * 40
-        self.cpu_target = 10.0
-        self.cpu_current = 10.0
+        self.cpu_history = [0.0] * 10
+        self.cpu_current = 0.0
+        self.ram_usage = 0.0 
         
-        # RAM
-        self.ram_usage = 35.0 
+        # Dictionary of active processes. 
+        self.active_processes = {
+            # keys are process id - pid
+            0: {"name": "kernel_task", "cpu": 2.0, "ram": 10.0},
+            1: {"name": "vfs_daemon", "cpu": 1.5, "ram": 5.0},
+            2: {"name": "sys_monitor", "cpu": 3.0, "ram": 4.0}
+        }
+        self.next_pid = 3 
         
         # Syslog Data
         self.logs = [
             "SYSTEM BOOT SUCCESS",
-            "VFS MOUNTED AT /",
+            "VFS MOUNTED AT /root",
             "AWAITING CONNECTIONS...",
             "WARNING: FIREWALL OFFLINE"
         ]
 
         # System Health
-        self.sys_health = 100.0  
+        self.sys_health = 100.0 
+
+        self.update_tick = pygame.time.get_ticks()
 
     def add_log(self, message):
         self.logs.append(message)
         if len(self.logs) > 12:
             self.logs.pop(0)
 
-    def update(self, curr_tick):
-        # Fake CPU for testing
-        if random.random() < 0.01:
-            self.cpu_target = random.uniform(5, 85)
+    def update(self, curr_ticks):
+        # Calculate actual system load based on running processes
+        total_cpu = 0.0
+        total_ram = 0.0
+        
+        for pid, proc in self.active_processes.items():
+            total_cpu += proc["cpu"]
+            total_ram += proc["ram"]
             
-        self.cpu_current += (self.cpu_target - self.cpu_current) * 0.05
-        self.cpu_history.append(self.cpu_current)
-        self.cpu_history.pop(0)
+        self.cpu_target = max(total_cpu, 0.0)
+        self.ram_usage = max(total_ram, 0.0)
+            
+        # CPU animation graph
+        if curr_ticks - self.update_tick >= 500:
+            self.cpu_current += (self.cpu_target - self.cpu_current) * 0.1
+            self.cpu_history.append(self.cpu_current)
+            self.cpu_history.pop(0)
+            self.update_tick = curr_ticks
 
     def draw(self, surface):
         start_y = self.y + 10
         available_height = self.height - 10
 
-        # Layout metrics
+        # Layout
         health_h = int(available_height * 0.12)
         graph_h = int(available_height * 0.25)
         ram_h = int(available_height * 0.12)
@@ -91,7 +108,7 @@ class SystemMonitor:
         
         c_title = self.title_font.render(f" CPU Load: {int(self.cpu_current)}% ", True, self.color, self.bg_color)
         surface.blit(c_title, (self.x + 15, cpu_y - (c_title.get_height() // 2)))
-        
+    
         bar_width = (self.width - 4) / len(self.cpu_history)
         for i, val in enumerate(self.cpu_history):
             bar_h = (val / 100.0) * (graph_h - 20) 
@@ -211,6 +228,64 @@ class Terminal:
                 self.lines.append(error)
             else:
                 self.update_prompt()
+
+        elif cmd == "ps":
+            # Table Header
+            header = f"{'PID'.ljust(5)} {'COMMAND'.ljust(18)} {'CPU%'.ljust(6)} {'RAM%'}"
+            self.lines.append(header)
+            self.lines.append("-" * 40)
+            
+            # Print every active process from the monitor
+            for pid, proc in self.monitor.active_processes.items():
+                p_str = f"{str(pid).ljust(5)} {proc['name'].ljust(18)} {str(proc['cpu']).ljust(6)} {proc['ram']}"
+                self.lines.append(p_str)
+        
+        elif cmd == "test_spike":
+            # Simulate a massive task (like a Virus uncloaking or an AV scan)
+            new_pid = self.monitor.next_pid
+            self.monitor.active_processes[new_pid] = {
+                "name": "MALWARE_PAYLOAD", 
+                "cpu": 45.0, 
+                "ram": 25.0
+            }
+            self.monitor.next_pid += 1
+            
+            self.lines.append(f"WARNING: Unknown process spawned with PID {new_pid}")
+            self.monitor.add_log(f"ALERT: HIGH CPU USAGE DETECTED")
+
+        elif cmd == "kill":
+            if not args:
+                self.lines.append("Error: Must provide a PID (e.g., 'kill 3')")
+                return
+            
+            try:
+                target_pid = int(args[0])
+            except ValueError:
+                self.lines.append(f"Error: '{args[0]}' is not a valid PID.")
+                return
+
+            # Check if the process actually exists
+            if target_pid in self.monitor.active_processes:
+                proc_name = self.monitor.active_processes[target_pid]["name"]
+                
+                # 1. Terminate the process (Free up the RAM)
+                del self.monitor.active_processes[target_pid]
+                
+                # 2. The CPU Burst Cost! 
+                # This physically spikes the graph on the left side to simulate a heavy burst action.
+                self.monitor.cpu_current = min(100.0, self.monitor.cpu_current + 60.0)
+                
+                self.lines.append(f"Success: Terminated {proc_name} [PID {target_pid}]")
+                self.monitor.add_log(f"SIGKILL -> PID {target_pid}")
+                
+                # 3. The Friendly Fire Penalty
+                # If they kill their own base system processes, heavily damage the system!
+                if target_pid in [0, 1, 2]:
+                    self.lines.append("CRITICAL: CORE SYSTEM PROCESS TERMINATED!")
+                    self.monitor.sys_health -= 35.0
+                    self.monitor.add_log("INTEGRITY FAULT")
+            else:
+                self.lines.append(f"Error: No active process found with PID {target_pid}")
                 
         else:
             self.lines.append(f"Command not found: {cmd}")
@@ -265,6 +340,7 @@ class Terminal:
                         self.cursor_index = 0
                     self.cursor_visible = True
                     self.cursor_timer = pygame.time.get_ticks()
+
             else:
                 if event.unicode.isprintable():
                     self.input_text = self.input_text[:self.cursor_index] + event.unicode + self.input_text[self.cursor_index:]
@@ -333,7 +409,8 @@ def main():
     # Color Pallet
     themes = {"retro_green":             {"bg_color": (10, 5, 15), "f_color": (0, 255, 65)},
               "phosphorous_amber":       {"bg_color": (10, 5, 15), "f_color": (255, 176, 0)},
-              "crimson":                 {"bg_color": (10, 5, 15), "f_color": (238,72,58)}
+              "crimson":                 {"bg_color": (10, 5, 15), "f_color": (238,72,58)},
+              "neon_yellow":             {"bg_color": (10, 5, 15), "f_color": (255, 255, 51)}  
               }
     
     bg_color = (10, 5, 15)
@@ -369,7 +446,7 @@ def main():
 
         # Updates
         terminal.update()
-        monitor.update(pygame.time.get_ticks())
+        monitor.update(curr_ticks=pygame.time.get_ticks())
 
         # Drawing
         game_surface.fill(bg_color)
