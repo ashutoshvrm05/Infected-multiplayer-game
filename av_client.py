@@ -181,9 +181,60 @@ class Terminal:
         self.cursor_timer = pygame.time.get_ticks()
         self.blink_interval = 500 
         self.cursor_index = 0
+
+        # warping
+        self.max_chars_per_line = (self.width-30) // self.char_width
+        self.words = []
+        self.curr_word = ""
+        self.wrapped_lines = [self.prompt]
+        self.update_wrapping()
+        self.curr_line = ""
     
     def update_prompt(self):
         self.prompt = f"admin@{self.vfs.get_path()}> "
+    
+    def update_wrapping(self):
+        # Wrap the full active input line
+        full_text = self.prompt + self.input_text
+        self.wrapped_lines = self._wrap_string(full_text)
+        
+        # cursor screen coordinates
+        text_up_to_cursor = self.prompt + self.input_text[:self.cursor_index]
+        self.cursor_sim_lines = self._wrap_string(text_up_to_cursor)
+
+    def _wrap_string(self, text):
+        if not text:
+            return [""]
+            
+        lines = []
+        current_line = ""
+        words = text.split(' ')
+        
+        for i, word in enumerate(words):
+            space = " " if i > 0 else ""
+            
+            if len(current_line) + len(space) + len(word) <= self.max_chars_per_line:
+                current_line += space + word
+            else:
+                if current_line:
+                    lines.append(current_line)
+                
+                # Edge Case
+                if len(word) > self.max_chars_per_line:
+                    current_line = ""
+                    for j in range(0, len(word), self.max_chars_per_line):
+                        chunk = word[j:j+self.max_chars_per_line]
+                        if len(chunk) == self.max_chars_per_line:
+                            lines.append(chunk)
+                        else:
+                            current_line = chunk
+                else:
+                    current_line = word
+                    
+        if current_line:
+            lines.append(current_line)
+            
+        return lines
 
     # runs when the user hits enter after some input text
     def execute_command(self, command_string):
@@ -298,10 +349,11 @@ class Terminal:
                 if self.input_text:
                     self.history.append(self.input_text)
                     self.history_index = len(self.history)
-                    self.lines.append(self.prompt + self.input_text)
+                    self.lines.extend(self.wrapped_lines) 
                     self.execute_command(self.input_text)
                 else:
                     self.lines.append(self.prompt)
+                    
                 self.input_text = "" 
                 self.cursor_index = 0
                 
@@ -319,6 +371,8 @@ class Terminal:
                 if self.cursor_index > 0:
                     self.input_text = self.input_text[:self.cursor_index - 1] + self.input_text[self.cursor_index:]
                     self.cursor_index -= 1
+                    self.cursor_visible = True
+                    self.cursor_timer = pygame.time.get_ticks()
 
             elif event.key == pygame.K_UP:
                 if self.history and self.history_index > 0:
@@ -345,6 +399,10 @@ class Terminal:
                 if event.unicode.isprintable():
                     self.input_text = self.input_text[:self.cursor_index] + event.unicode + self.input_text[self.cursor_index:]
                     self.cursor_index += 1
+            
+            self.update_wrapping()
+                    
+                            
 
     # updating blink of cursor
     def update(self):
@@ -359,7 +417,7 @@ class Terminal:
         t_x = self.x + 10
         line_height = self.char_height
 
-        # Draw Right Panel (Terminal + Border)
+        # Draw Right Border
         pygame.draw.rect(surface, self.text_color, 
                          pygame.Rect(self.x, self.y, self.width, self.height-(2*20)-10), 
                          width=2) 
@@ -376,25 +434,49 @@ class Terminal:
             t_y += line_height
         
         full_text = self.prompt + self.input_text[:self.cursor_index] + " " + self.input_text[self.cursor_index+1:]
-        text_surface = self.font.render(full_text, True, self.text_color)
-        surface.blit(text_surface, (t_x, t_y))
-        
-        total_chars_behind_cursor = len(self.prompt) + self.cursor_index
-        cursor_x = t_x + (total_chars_behind_cursor * self.char_width)
-        cursor_y = self.y + 15 + len(visible_lines)*self.char_height
 
+        # words = full_text.split(" ")
+        # self.curr_line = ""
+        # for word in words:
+        #     if(len(word) < self.max_chars_per_line and len(self.curr_line + word) < self.max_chars_per_line):
+        #         self.curr_line = self.curr_line + " " + word
+        #     else:
+        #         self.wrapped_lines.append(self.curr_line)
+        #         self.curr_line = ""
+        # self.wrapped_lines.append(self.curr_line)
+        
+        # if full_text[-2] == ".":
+        #     print(self.wrapped_lines)
+        # y = t_y
+        # for line in self.wrapped_lines:          
+        
+        # active typing area
+        y = t_y 
+        for line in self.wrapped_lines:
+            text_surface = self.font.render(line, True, self.text_color)
+            surface.blit(text_surface, (t_x, y))
+            y += self.char_height
+
+        # Cursor
+        chars_behind_cursor = len(self.cursor_sim_lines[-1])
+        cursor_x = t_x + (chars_behind_cursor * self.char_width)
+        cursor_y = self.y + 15 + (len(visible_lines) + len(self.cursor_sim_lines) - 1) * self.char_height
+
+        # Drawing the cursor
         if self.cursor_visible:
             cursor_rect = pygame.Rect(cursor_x, cursor_y, self.char_width, self.char_height)
             pygame.draw.rect(surface, self.text_color, cursor_rect)
-            if(len(self.input_text)>self.cursor_index):
+            
+            # drawing the inverted character
+            if len(self.input_text) > self.cursor_index:
                 char_under_cursor = self.input_text[self.cursor_index]
                 s = self.font.render(char_under_cursor, True, (0,0,0))
-                surface.blit(s, (cursor_x, t_y))
+                surface.blit(s, (cursor_x, cursor_y))
         else:
-            if(len(self.input_text)>self.cursor_index):
+            if len(self.input_text) > self.cursor_index:
                 char_under_cursor = self.input_text[self.cursor_index]
                 s = self.font.render(char_under_cursor, True, self.text_color)
-                surface.blit(s, (cursor_x, t_y))
+                surface.blit(s, (cursor_x, cursor_y))
 
 
 def main():
@@ -410,7 +492,8 @@ def main():
     themes = {"retro_green":             {"bg_color": (10, 5, 15), "f_color": (0, 255, 65)},
               "phosphorous_amber":       {"bg_color": (10, 5, 15), "f_color": (255, 176, 0)},
               "crimson":                 {"bg_color": (10, 5, 15), "f_color": (238,72,58)},
-              "neon_yellow":             {"bg_color": (10, 5, 15), "f_color": (255, 255, 51)}  
+              "neon_yellow":             {"bg_color": (10, 5, 15), "f_color": (255, 255, 51)}, 
+              "blue":                    {"bg_color": (10, 5, 15), "f_color": (40, 55, 250)} 
               }
     
     bg_color = (10, 5, 15)
@@ -423,7 +506,7 @@ def main():
     # Terminal on the Right
     term_x = border_padding + monitor_width + border_padding
     term_width = WIDTH - term_x - border_padding
-    terminal = Terminal(x=term_x, y=border_padding + 10, width=term_width - 20, height=HEIGHT, monitor=monitor, theme=themes["phosphorous_amber"])   
+    terminal = Terminal(x=term_x, y=border_padding + 10, width=term_width , height=HEIGHT, monitor=monitor, theme=themes["phosphorous_amber"])   
 
     # CRT Effect Scanlines 
     scanline_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
