@@ -4,8 +4,11 @@ INFECTED is a retro-styled, asymmetric multiplayer game built entirely in Python
 
 Featuring a custom-built Virtual File System (VFS), a from-scratch interactive terminal engine, and hardware-accelerated CRT shaders (to be added), this project is a love letter to 1980s mainframe aesthetics and classic hacking simulators.
 
-![Screenshot Placeholder](link-to-your-screenshot-here.png)
-*Replace this with a screenshot of the Amber CRT Antivirus Client!*
+<img width="1201" height="642" alt="Screenshot from 2026-07-09 13-04-01" src="https://github.com/user-attachments/assets/ff4a640b-cd50-4a05-98e9-4e5a0df7edd7" />
+<img width="1201" height="642" alt="Screenshot from 2026-07-09 13-04-33" src="https://github.com/user-attachments/assets/d3daf307-94ed-4f3b-91dc-bd5ae1d6340b" />
+
+[Screencast from 2026-07-09 13-00-28.webm](https://github.com/user-attachments/assets/3ad5209f-aec1-491e-b574-3296cf37ab8e)
+[Screencast from 2026-07-09 13-01-28.webm](https://github.com/user-attachments/assets/1952255f-6bf7-4142-a510-3b862f8bbd52)
 
 ---
 
@@ -101,7 +104,7 @@ python av_client.py
 python virus_client.py
 ```
 **Controls:**  
--UP / DOWN Arrows: Select files in the TUI.
+- UP / DOWN Arrows: Select files in the TUI.
 - ENTER: Open folder / Trigger action menu.
 - LEFT CLICK + DRAG: Pan the tactical node map on the left side of the screen.
 
